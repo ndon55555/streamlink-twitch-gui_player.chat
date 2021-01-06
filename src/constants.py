@@ -1,0 +1,8 @@
+PROJECT_DATA_DIR = ".twitch-desktop"
+TWITCH_CLIENT_ID = "mvdnplltxxdbichi2mtxthehyytd2i"
+TWITCH_OAUTH_URL = "https://id.twitch.tv/oauth2/authorize"
+TWITCH_OAUTH_REDIRECT_ADDRESS = "http://localhost"
+TWITCH_OAUTH_REDIRECT_PORT = 45678
+TWITCH_OAUTH_REDIRECT_URL = (
+    f"{TWITCH_OAUTH_REDIRECT_ADDRESS}:{TWITCH_OAUTH_REDIRECT_PORT}"
+)
