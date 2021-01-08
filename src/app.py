@@ -10,8 +10,8 @@ import vlc
 from src.chat import TwitchChatReader, get_token, user_data_request, INVALID_OAUTH_TOKEN
 
 gi.require_version("Gtk", "3.0")
+gi.require_version("WebKit2", "4.0")
 from gi.repository import GLib, Gtk
-from src.oauth import with_oauth_redirect_server, get_twitch_oauth_token_implicit_flow
 
 
 class TwitchPlayer(Gtk.DrawingArea):
@@ -33,28 +33,29 @@ class TwitchPlayer(Gtk.DrawingArea):
         self._player.play()
 
 
-class App(Gtk.Window):
-    def __init__(self, channel_name, stream_loc):
-        super().__init__(title="Twitch Player")
-        self._player = TwitchPlayer(stream_loc)
-        self._hbox = Gtk.HBox()
-        self._scrolled_window = Gtk.ScrolledWindow()
-        self._chat = Gtk.TextView()
+class ChatView(Gtk.TextView):
+    def __init__(self, channel_name):
+        super().__init__()
+        self.set_editable(False)
+        self.set_cursor_visible(False)
+        self.set_wrap_mode(Gtk.WrapMode.WORD)
 
-        self._scrolled_window.set_border_width(5)
-        self._scrolled_window.set_min_content_width(300)
-        self._scrolled_window.set_vexpand(True)
-        self._chat.set_editable(False)
-        self._chat.set_cursor_visible(False)
-        self._chat.set_wrap_mode(Gtk.WrapMode.WORD)
-
-        self._scrolled_window.add(self._chat)
-        self.add(self._hbox)
-        self._hbox.add(self._player)
-        self._hbox.add(self._scrolled_window)
-
-        self._player.play()
+        self._pre_chat_update_handlers = []
+        self._post_chat_update_handlers = []
         self._run_chat_thread(channel_name)
+
+    def _append_msg(self, msg):
+        for handler in self._pre_chat_update_handlers:
+            handler()
+
+        buf = self.get_buffer()
+        buf.insert(buf.get_end_iter(), msg)
+
+        while Gtk.events_pending():
+            Gtk.main_iteration()
+
+        for handler in self._post_chat_update_handlers:
+            handler()
 
     def _run_chat_thread(self, channel_name):
         def target():
@@ -62,7 +63,6 @@ class App(Gtk.Window):
             self._read_chat(channel_name)
 
         chat_thread = threading.Thread(target=target, daemon=True)
-        chat_thread.setDaemon(True)
         chat_thread.start()
 
     def _read_chat(self, channel_name):
@@ -76,31 +76,9 @@ class App(Gtk.Window):
         (user_data,) = user_data_response.json()["data"]
         nickname = user_data["display_name"]
 
-        def append_msg_to_chat(text):
-            buf: Gtk.TextBuffer = self._chat.get_buffer()
-            buf.insert(buf.get_end_iter(), text)
-
-        def update_chat(text):
-            vertical_scroll: Gtk.Adjustment = self._scrolled_window.get_vadjustment()
-
-            def chat_vertical_scroll_max():
-                return vertical_scroll.get_upper() - vertical_scroll.get_page_size()
-
-            # If True, Indicates the user hasn't manually scrolled up, so autoscroll down after text is appended
-            should_autoscroll = vertical_scroll.get_value() == chat_vertical_scroll_max()
-
-            append_msg_to_chat(text)
-
-            # Wait for the TextView to resize after its TextBuffer was just modified to get the most up-to-date
-            while Gtk.events_pending():
-                Gtk.main_iteration()
-
-            if should_autoscroll:
-                vertical_scroll.set_value(chat_vertical_scroll_max())
-
         def show_chat_msg(msg):
             text = f"{msg.author.name}: {msg.content}\n"
-            GLib.idle_add(update_chat, text)
+            GLib.idle_add(self._append_msg, text)
 
         reader = TwitchChatReader(
             oauth_token=token,
@@ -109,6 +87,59 @@ class App(Gtk.Window):
             chat_handler=show_chat_msg,
         )
         reader.run()
+
+    def on_pre_chat_update(self, handler):
+        self._pre_chat_update_handlers.append(handler)
+
+    def on_post_chat_update(self, handler):
+        self._post_chat_update_handlers.append(handler)
+
+
+class ChatScrolledView(Gtk.ScrolledWindow):
+    def __init__(self, channel_name):
+        super().__init__()
+        self.set_border_width(5)
+        self.set_min_content_width(300)
+        self.set_vexpand(True)
+        self._should_autoscroll = True
+        self._vadjustment_prev_val = self._vadjustment_cur_val()
+
+        self._chat_view = ChatView(channel_name)
+        self._chat_view.on_pre_chat_update(self._chat_view_pre_update)
+        self._chat_view.on_post_chat_update(self._chat_view_post_update)
+        self.add(self._chat_view)
+
+    def _vadjustment_cur_val(self):
+        return self.get_vadjustment().get_value()
+
+    def _vadjustment_max_val(self):
+        vadj = self.get_vadjustment()
+        return vadj.get_upper() - vadj.get_page_size()
+
+    def _chat_view_pre_update(self):
+        self._should_autoscroll = self._vadjustment_cur_val() == self._vadjustment_max_val()
+        self._vadjustment_prev_val = self._vadjustment_cur_val()
+
+    def _chat_view_post_update(self):
+        vadj_val = self._vadjustment_prev_val
+
+        if self._should_autoscroll:
+            vadj_val = self._vadjustment_max_val()
+
+        self.get_vadjustment().set_value(vadj_val)
+
+
+class App(Gtk.Window):
+    def __init__(self, channel_name, stream_loc):
+        super().__init__(title="Twitch Player")
+        self._player = TwitchPlayer(stream_loc)
+        self._hbox = Gtk.HBox()
+
+        self.add(self._hbox)
+        self._hbox.add(self._player)
+        self._hbox.add(ChatScrolledView(channel_name))
+
+        self._player.play()
 
 
 if __name__ == "__main__":
