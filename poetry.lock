@@ -349,7 +349,7 @@ rx = ">=3.0.0"
 
 [[package]]
 name = "twitchio"
-version = "1.1.0"
+version = "1.2.1"
 description = "A Python IRC and API wrapper for Twitch."
 category = "main"
 optional = false
@@ -424,7 +424,7 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "9bd63a07485ee6babb5c1699d28e8e1e5cf2889bf97c8fabad865bdb5755fb47"
+content-hash = "f095613fd6b3eff3a5d95fcf682ec27df2295825a5144dab95a52ed1831305fe"
 
 [metadata.files]
 aiohttp = [
@@ -747,8 +747,8 @@ twitch-python = [
     {file = "twitch_python-0.0.19-py3-none-any.whl", hash = "sha256:b2b05ec15c7a081e1eaa2141c8d5084a1aeaaca7c25c34cbce46ce88877b94bc"},
 ]
 twitchio = [
-    {file = "twitchio-1.1.0-py3-none-any.whl", hash = "sha256:03bf880fdb41440dc82d8f636aa33948536266694dc98bfbbb599e918844e8cc"},
-    {file = "twitchio-1.1.0.tar.gz", hash = "sha256:e8aae4ac6065f2a346108450e021df76042ba14ef262ee190608a8b4614055a3"},
+    {file = "twitchio-1.2.1-py3-none-any.whl", hash = "sha256:a4a4bdf767f11dac540f3349de61e12bc3820295c0137d8938282874605863fd"},
+    {file = "twitchio-1.2.1.tar.gz", hash = "sha256:03d8e8bc4a70df542374c0f7e4c015303a68754f1b5b744ecf10c7d7b0be89b5"},
 ]
 typed-ast = [
     {file = "typed_ast-1.4.2-cp35-cp35m-manylinux1_i686.whl", hash = "sha256:7703620125e4fb79b64aa52427ec192822e9f45d37d4b6625ab37ef403e1df70"},
